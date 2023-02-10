@@ -1,7 +1,7 @@
 // Author: Benjamin Widman
 mod hash_map;
 
-use std::{io::{self, Write, Read}, fs::File, collections::VecDeque};
+use std::{io::{self, Write, Read, Seek}, fs::File, collections::VecDeque};
 use hash_map::HashMap;
 
 type Entry = Vec<String>;
@@ -11,6 +11,7 @@ struct Table {
     entry_indices: Vec<HashMap<Vec<usize>>>, // Hash maps for every column, containing indices for the respective entries having the key as the value in that column
     // Problem: during insertion, must use search() to get reference to Vec of indices then push(index), if HashMap::contains(col_value)
     entries: Vec<Entry>, // Entries with values for every column
+    
     file: File,
     file_lines: Vec<String>,
     deleted_lines: Vec<usize>,
@@ -68,8 +69,8 @@ impl Table {
             entry_indices.push(HashMap::new());
         }
 
-        let mut entries = vec![Vec::with_capacity(headers.len()); lines.len()];
-
+        let mut entries = Vec::with_capacity(lines.len());
+        
         // Every row is an entry with comma separated column values
         for line in lines {
             let entry: Entry = line.split(',')
@@ -121,9 +122,10 @@ impl Table {
         // Find matches for specified entry
         let matches = self.matches(parameters);
 
-        // Delete matches in file by getting it's content and only setting the other entries back again
+        // Save deleted entries as to not save these when exiting
         self.deleted_lines.append(&mut matches.clone());
 
+        println!("Removed following entries:");
         // Delete matches in program data
         for &entry_index in &matches {
             let entry = &self.entries[entry_index];
@@ -134,6 +136,7 @@ impl Table {
                 let del_index = indices.iter().position(|&x| x == entry_index).unwrap();
                 indices.remove(del_index);
             }
+            print_entry(entry);
             self.entries[entry_index] = vec![]; // Can't remove as it would disrupt the indices
         }
     }
@@ -142,7 +145,7 @@ impl Table {
         // Only "select", just print all entries
         if parameters.len() == 0 {
             print_entry(&self.headers);
-            println!("---------------------------------");
+            print_line(self.headers.len());
             for entry in &self.entries {
                 print_entry(entry);
             }
@@ -153,7 +156,7 @@ impl Table {
         let matches = self.matches(parameters);
 
         print_entry(&self.headers);
-        println!("---------------------------------");
+        print_line(self.headers.len());
         // Print all matches
         for entry_index in matches {
             print_entry(&self.entries[entry_index]);
@@ -176,6 +179,14 @@ impl Table {
             None => return vec![],
         }
     }
+}
+
+fn print_line(length: usize) {
+    print!("-");
+    for _i in 0..length {
+        print!("----------------");
+    }
+    println!();
 }
 
 fn print_entry(entry: &Entry) {
@@ -223,7 +234,11 @@ fn main() {
             _ => (),
         }
     }
+    println!("Saving changes to file...");
+
+    // Rewrite file data excluding deleted entries
     data.file.set_len(0).unwrap(); // Clear file
+    data.file.rewind().unwrap();
 
     writeln!(data.file, "{}", data.file_lines[0]).unwrap(); // Insert header
 
@@ -232,4 +247,5 @@ fn main() {
             writeln!(data.file, "{}", data.file_lines[i]).unwrap();
         }
     }
+    println!("See you next time");
 }

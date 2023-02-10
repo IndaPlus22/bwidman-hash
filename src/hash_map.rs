@@ -11,6 +11,7 @@ where T: Clone {
     fullness: f32,
 }
 
+#[allow(dead_code)]
 impl<T> HashMap<T>
 where T: Clone {
     pub fn new() -> Self {
