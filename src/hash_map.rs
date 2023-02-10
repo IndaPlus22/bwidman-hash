@@ -61,22 +61,22 @@ where T: Clone {
         println!("{key} does not exist");
     }
 
-    pub fn search(&self, key: &str) -> Option<&T> {
+    pub fn search(&mut self, key: &str) -> Option<&mut T> {
         let index = self.hash_code(key);
 
         // Search for the correct element to return
         // among potential collisions in the same slot
         for (i, element) in self.slots[index].iter().enumerate() {
             if element.key == key {
-                return Some(&self.slots[index][i].value);
+                return Some(&mut self.slots[index][i].value);
             }
         }
         None // No element of the key was found
     }
 
-    pub fn contains(&self, key: &str) -> bool {
+    pub fn contains(&mut self, key: &str) -> bool {
         match self.search(key) {
-            Some(x) => true,
+            Some(_x) => true,
             None => false,
         }
     }
@@ -94,7 +94,7 @@ where T: Clone {
     fn hash_code(&self, key: &str) -> usize {
         let key_value: usize = key.as_bytes()
             .iter()
-            .map(|x| *x as usize)
+            .map(|&x| x as usize)
             .sum();
         return key_value * 17 % self.slots.len();
     }
